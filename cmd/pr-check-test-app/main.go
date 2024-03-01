@@ -2,14 +2,22 @@ package main
 
 import (
 	"encoding/pem"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 
 	"github.com/VinceDeslo/pr-check-test-app/internal/config"
+)
+
+const (
+	SERVER_PORT = ":5000"
 )
 
 func main() {
@@ -38,15 +46,27 @@ func main() {
 	pkey, _ := pem.Decode(rawKey)
 	
 	logger.Info("Successfully read private key", "path", pkeyPath, "pkey", pkey)
+
+	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Logger)
 	
-	// Set up auth callback at /auth
-	// Set up inbound webhooks at /webhooks
+	router.Post("/webhooks", handleWebhook)
+
+	logger.Info("Starting server", "port", SERVER_PORT)
+	err = http.ListenAndServe(SERVER_PORT, router)
+	mustNotError(logger, err, "Failed to start server")
+}
+
+
+func handleWebhook(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Received Github App webhook")
 }
 
 func mustNotError(logger *slog.Logger, err error, msg string) {
 	if err != nil {
-		logger.Error(msg)
+		logger.Error(msg, "error", err)
 		os.Exit(1)
 	}
 }
-// Run the server on :5000 with a tunnel `ngrok http 5000`
