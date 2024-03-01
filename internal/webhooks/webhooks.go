@@ -39,6 +39,8 @@ func (ws *WebhookService) HandleWebhook(w http.ResponseWriter, r *http.Request) 
 	}
 
 	switch event := event.(type) {
+	case *github.PullRequestEvent:
+		ws.processPullRequestEvent(event)
 	case *github.CheckRunEvent:
 		ws.processCheckRunEvent(event)
 	default:
@@ -48,4 +50,8 @@ func (ws *WebhookService) HandleWebhook(w http.ResponseWriter, r *http.Request) 
 
 func (ws *WebhookService) processCheckRunEvent(event *github.CheckRunEvent){
 	ws.Logger.Info("Processing check_run event", "action", event.Action)
+}
+
+func (ws *WebhookService) processPullRequestEvent(event *github.PullRequestEvent){
+	ws.Logger.Info("Processing pull_request event", "action", event.Action)
 }
