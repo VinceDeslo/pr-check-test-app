@@ -47,13 +47,11 @@ func (ws *WebhookService) HandleWebhook(w http.ResponseWriter, r *http.Request) 
 		ws.processPullRequestEvent(event)
 	case *github.CheckRunEvent:
 		ws.processCheckRunEvent(event)
+	case *github.CheckSuiteEvent:
+		ws.processCheckSuiteEvent(event)
 	default:
 		ws.Logger.Warn("Unknown event type")		
 	}
-}
-
-func (ws *WebhookService) processCheckRunEvent(event *github.CheckRunEvent){
-	ws.Logger.Info("Processing check_run event", "event", event)
 }
 
 func (ws *WebhookService) processPullRequestEvent(event *github.PullRequestEvent){
@@ -63,13 +61,23 @@ func (ws *WebhookService) processPullRequestEvent(event *github.PullRequestEvent
 	switch *event.Action {
 	case "opened":
 		ws.Logger.Info("Processing pull_request opened")
-		ws.CheckService.CreatePRCheck()
+		ws.CheckService.CreatePRCheck(event)
 	case "edited":
 		ws.Logger.Info("Processing pull_request edited")
+	case "synchronize":
+		ws.Logger.Info("Processing pull_request synchronize")
 		ws.CheckService.RerequestPRCheck()
 	case "closed":
 		ws.Logger.Info("Processing pull_request closed")
 	default:
 		ws.Logger.Info("Ignoring pull request event")
 	}
+}
+
+func (ws *WebhookService) processCheckRunEvent(event *github.CheckRunEvent){
+	ws.Logger.Info("Processing check_run event", "event", event)
+}
+
+func (ws *WebhookService) processCheckSuiteEvent(event *github.CheckSuiteEvent){
+	ws.Logger.Info("Processing check_suite event", "event", event)
 }
