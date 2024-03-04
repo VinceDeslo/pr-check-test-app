@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-github/v60/github"
 	"github.com/joho/godotenv"
 
+	"github.com/VinceDeslo/pr-check-test-app/internal/checks"
 	"github.com/VinceDeslo/pr-check-test-app/internal/config"
 	"github.com/VinceDeslo/pr-check-test-app/internal/webhooks"
 )
@@ -66,7 +67,8 @@ func main() {
 	}
 	githubClient := github.NewClient(httpClient)
 
-	webhookService := webhooks.NewWebhookService(cfg, logger, githubClient)
+	checksService := checks.NewChecksService(cfg, logger, githubClient)
+	webhookService := webhooks.NewWebhookService(cfg, logger, githubClient, checksService)
 
 	router.Post("/webhooks", webhookService.HandleWebhook)
 
