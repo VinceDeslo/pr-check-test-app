@@ -17,6 +17,7 @@ import (
 	"github.com/VinceDeslo/pr-check-test-app/internal/checks"
 	"github.com/VinceDeslo/pr-check-test-app/internal/config"
 	"github.com/VinceDeslo/pr-check-test-app/internal/prcomments"
+	"github.com/VinceDeslo/pr-check-test-app/internal/storage"
 	"github.com/VinceDeslo/pr-check-test-app/internal/webhooks"
 )
 
@@ -68,8 +69,9 @@ func main() {
 	}
 	githubClient := github.NewClient(httpClient)
 
-	checksService := checks.NewChecksService(cfg, logger, githubClient)
-	prCommentsService := prcomments.NewPRCommentsService(cfg, logger, githubClient)
+	storageService := storage.NewStorageService(cfg, logger)
+	checksService := checks.NewChecksService(cfg, logger, githubClient, storageService)
+	prCommentsService := prcomments.NewPRCommentsService(cfg, logger, githubClient, storageService)
 
 	webhookService := webhooks.NewWebhookService(
 		cfg,

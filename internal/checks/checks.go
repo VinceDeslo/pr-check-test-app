@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/VinceDeslo/pr-check-test-app/internal/config"
+	"github.com/VinceDeslo/pr-check-test-app/internal/storage"
 	"github.com/google/go-github/v60/github"
 	"github.com/google/uuid"
 )
@@ -14,17 +15,20 @@ type ChecksService struct {
 	Config config.Config
 	Logger *slog.Logger
 	GithubClient *github.Client
+	Storage *storage.StorageService
 }
 
 func NewChecksService(
 	cfg config.Config, 
 	logger *slog.Logger,
 	ghClient *github.Client,
+	storage *storage.StorageService,
 ) ChecksService {
 	return ChecksService {
 		Config: cfg,	
 		Logger: logger, 
 		GithubClient: ghClient,
+		Storage: storage,
 	}
 }
 
@@ -36,12 +40,9 @@ func (cs *ChecksService) CreatePRCheck(event *github.PullRequestEvent) {
 	started := &github.Timestamp{time.Now()}
 	externalID := uuid.NewString()
 	status := "queued"
-	title := "PR Check Title"
-	summary := `# Summary
-	- This is a custom PR Check template
-	- Insert any additional content here`
-	text := `### Details
-	Here are some additional details about the check`
+	title := "Custom PR Check"
+	summary := `- Status: Check is currently in progress ...`
+	text := `Details will be populated once third party scan is complete`
 	annotationsCount := 0
 	annotationsUrl := ""
 	annotations := []*github.CheckRunAnnotation{}
@@ -58,35 +59,18 @@ func (cs *ChecksService) CreatePRCheck(event *github.PullRequestEvent) {
 		Images: images,
 	}
 
-	// Creates a rerun button in the GH UI
-	rerunAction := &github.CheckRunAction{
-		Label: "Rerun",
-		Description: "Reruns the current check",
-		Identifier: "rerun-pr-check",
-	}
-
-	// Small button linked to simulate a scan completing event
-	scanAction := &github.CheckRunAction{
-		Label: "Scan",
-		Description: "Complete the external scan",
-		Identifier: "scan-complete",
-	}
-
 	actions := []*github.CheckRunAction{
-		rerunAction,
-		scanAction,
+		cs.getRerunAction(),
+		cs.getScanAction(),
 	}
 
-	// Dummy check run payload for testing
 	checkRunPayload := &github.CreateCheckRunOptions{
-		Name: "check-run",
+		Name: "custom-check",
 		HeadSHA: *event.PullRequest.Head.SHA,
 		DetailsURL: &detailsUrl,
 		ExternalID: &externalID,
 		Status: &status,
-		// Conclusion: , not specified on creation
 		StartedAt: started,
-		// CompletedAt: , not specified on creation
 		Output: output,
 		Actions: actions,
 	}
@@ -102,14 +86,81 @@ func (cs *ChecksService) CreatePRCheck(event *github.PullRequestEvent) {
 	}
 	cs.Logger.Info("Created a check run", "checkRun", checkRun)
 
-	// At this point, the checkRun ID should be stored to keep track of runs and update them
-	// after any external work has been completed.
+	cs.Storage.InMemDB.CheckRunID = *checkRun.ID
 }
 
 func (cs *ChecksService) UpdatePRCheck(event *github.CheckRunEvent) {
 	cs.Logger.Info("Updating a PR check")
+	ctx := context.Background()
+
+	detailsUrl := "https://github.com/VinceDeslo/pr-check-test-app"
+	completed := &github.Timestamp{time.Now()}
+	externalID := uuid.NewString()
+	status := "completed"
+	conclusion := "success"
+	title := "Custom PR Check"
+	summary := `:white_check_mark: Your scan has completed successfully!`
+	text := `Here are some additional details about the check`
+	annotationsCount := 0
+	annotationsUrl := ""
+	annotations := []*github.CheckRunAnnotation{}
+	images := []*github.CheckRunImage{}
+
+	output := &github.CheckRunOutput{
+		Title: &title,
+		Summary: &summary,
+		Text: &text,
+		AnnotationsCount: &annotationsCount,
+		AnnotationsURL: &annotationsUrl,
+		Annotations: annotations,
+		Images: images,
+	}
+
+	actions := []*github.CheckRunAction{
+		cs.getRerunAction(),
+		cs.getScanAction(),
+	}
+
+	checkRunPayload := &github.UpdateCheckRunOptions{
+		Name: "custom-check",
+		DetailsURL: &detailsUrl,
+		ExternalID: &externalID,
+		Status: &status,
+		Conclusion: &conclusion, 
+		CompletedAt: completed,
+		Output: output,
+		Actions: actions,
+	}
+
+	checkRun, resp, err := cs.GithubClient.Checks.UpdateCheckRun(
+		ctx,
+		*event.Repo.Owner.Login,
+		*event.Repo.Name,
+		*event.CheckRun.ID,
+		*checkRunPayload,
+	)
+	if err != nil {
+		cs.Logger.Error("Failed to update a check run", "error", err, "response", resp)
+	}
+	cs.Logger.Info("Updated a check run", "checkRun", checkRun)
 }
 
 func (cs *ChecksService) RerequestPRCheck() {
 	cs.Logger.Info("Rerequesting a PR check")
+}
+
+func (cs *ChecksService) getScanAction() *github.CheckRunAction{
+	return 	&github.CheckRunAction{
+		Label: "Scan",
+		Description: "Complete the external scan",
+		Identifier: "scan-complete",
+	}
+}
+
+func (cs *ChecksService) getRerunAction() *github.CheckRunAction{
+	return &github.CheckRunAction{
+		Label: "Rerun",
+		Description: "Reruns the current check",
+		Identifier: "rerun-pr-check",
+	}
 }
