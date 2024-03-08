@@ -6,6 +6,7 @@ import (
 
 	"github.com/VinceDeslo/pr-check-test-app/internal/checks"
 	"github.com/VinceDeslo/pr-check-test-app/internal/config"
+	"github.com/VinceDeslo/pr-check-test-app/internal/prcomments"
 	"github.com/google/go-github/v60/github"
 )
 
@@ -14,6 +15,7 @@ type WebhookService struct {
 	Logger *slog.Logger
 	GithubClient *github.Client
 	CheckService *checks.ChecksService
+	PRCommentsService *prcomments.PRCommentsService
 }
 
 func NewWebhookService(
@@ -21,12 +23,14 @@ func NewWebhookService(
 	logger *slog.Logger,
 	ghClient *github.Client,
 	checkService checks.ChecksService,
+	prCommentsService prcomments.PRCommentsService,
 ) WebhookService {
 	return WebhookService {
 		Config: cfg,	
 		Logger: logger, 
 		GithubClient: ghClient,
 		CheckService: &checkService,
+		PRCommentsService: &prCommentsService,
 	}
 }
 
@@ -62,8 +66,7 @@ func (ws *WebhookService) processPullRequestEvent(event *github.PullRequestEvent
 	case "opened":
 		ws.Logger.Info("Processing pull_request opened")
 		ws.CheckService.CreatePRCheck(event)
-	case "edited":
-		ws.Logger.Info("Processing pull_request edited")
+		ws.PRCommentsService.CreatePRComment(event)
 	case "synchronize":
 		ws.Logger.Info("Processing pull_request synchronize")
 		ws.CheckService.RerequestPRCheck()
