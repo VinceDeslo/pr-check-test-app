@@ -51,3 +51,7 @@ func (prcs *PRCommentsService) CreatePRComment(event *github.PullRequestEvent) {
 
 	// Store PR comment ID for reuse later
 }
+
+func (prcs *PRCommentsService) UpdatePRComment(event *github.CheckRunEvent) {
+	prcs.Logger.Info("Updating a PR comment")
+}

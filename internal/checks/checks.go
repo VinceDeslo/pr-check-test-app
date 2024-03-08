@@ -64,7 +64,18 @@ func (cs *ChecksService) CreatePRCheck(event *github.PullRequestEvent) {
 		Description: "Reruns the current check",
 		Identifier: "rerun-pr-check",
 	}
-	actions := []*github.CheckRunAction{rerunAction}
+
+	// Small button linked to simulate a scan completing event
+	scanAction := &github.CheckRunAction{
+		Label: "Scan",
+		Description: "Complete the external scan",
+		Identifier: "scan-complete",
+	}
+
+	actions := []*github.CheckRunAction{
+		rerunAction,
+		scanAction,
+	}
 
 	// Dummy check run payload for testing
 	checkRunPayload := &github.CreateCheckRunOptions{
@@ -95,7 +106,7 @@ func (cs *ChecksService) CreatePRCheck(event *github.PullRequestEvent) {
 	// after any external work has been completed.
 }
 
-func (cs *ChecksService) UpdatePRCheck() {
+func (cs *ChecksService) UpdatePRCheck(event *github.CheckRunEvent) {
 	cs.Logger.Info("Updating a PR check")
 }
 

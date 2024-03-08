@@ -69,7 +69,6 @@ func (ws *WebhookService) processPullRequestEvent(event *github.PullRequestEvent
 		ws.PRCommentsService.CreatePRComment(event)
 	case "synchronize":
 		ws.Logger.Info("Processing pull_request synchronize")
-		ws.CheckService.RerequestPRCheck()
 	case "closed":
 		ws.Logger.Info("Processing pull_request closed")
 	default:
@@ -79,6 +78,25 @@ func (ws *WebhookService) processPullRequestEvent(event *github.PullRequestEvent
 
 func (ws *WebhookService) processCheckRunEvent(event *github.CheckRunEvent){
 	ws.Logger.Info("Processing check_run event", "event", event)
+
+	// The action performed. Possible values are: "created", "completed", "rerequested" or "requested_action".
+	if *event.Action != "requested_action" {
+		ws.Logger.Info("Ignoring check run event")
+		return
+	}
+
+	switch event.RequestedAction.Identifier {
+	case "rerun-pr-check":
+		ws.Logger.Info("Processing check_run rerun action")
+		ws.CheckService.RerequestPRCheck()
+	case "scan-complete":
+		// Small simulation of external work getting completed
+		ws.Logger.Info("Processing check_run scan complete action")
+		ws.CheckService.UpdatePRCheck(event)
+		ws.PRCommentsService.UpdatePRComment(event)
+	default:
+		ws.Logger.Info("Unrecognized requested action")
+	}
 }
 
 func (ws *WebhookService) processCheckSuiteEvent(event *github.CheckSuiteEvent){
