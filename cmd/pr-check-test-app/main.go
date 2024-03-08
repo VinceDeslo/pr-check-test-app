@@ -16,6 +16,7 @@ import (
 
 	"github.com/VinceDeslo/pr-check-test-app/internal/checks"
 	"github.com/VinceDeslo/pr-check-test-app/internal/config"
+	"github.com/VinceDeslo/pr-check-test-app/internal/inlinecomments"
 	"github.com/VinceDeslo/pr-check-test-app/internal/prcomments"
 	"github.com/VinceDeslo/pr-check-test-app/internal/storage"
 	"github.com/VinceDeslo/pr-check-test-app/internal/webhooks"
@@ -72,6 +73,7 @@ func main() {
 	storageService := storage.NewStorageService(cfg, logger)
 	checksService := checks.NewChecksService(cfg, logger, githubClient, storageService)
 	prCommentsService := prcomments.NewPRCommentsService(cfg, logger, githubClient, storageService)
+	inlineCommentsService := inlinecomments.NewInlineCommentsService(cfg, logger, githubClient, storageService)
 
 	webhookService := webhooks.NewWebhookService(
 		cfg,
@@ -79,6 +81,7 @@ func main() {
 		githubClient,
 		checksService,
 		prCommentsService,
+		inlineCommentsService,
 	)
 
 	router.Post("/webhooks", webhookService.HandleWebhook)

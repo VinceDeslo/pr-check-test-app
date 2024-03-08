@@ -13,6 +13,8 @@ type StorageService struct {
 }
 
 type InMemDB struct {
+	PRNumber int
+	HeadSHA string 
 	PRCommentID int64
 	CheckRunID int64
 }

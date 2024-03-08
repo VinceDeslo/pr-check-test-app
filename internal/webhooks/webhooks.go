@@ -6,6 +6,7 @@ import (
 
 	"github.com/VinceDeslo/pr-check-test-app/internal/checks"
 	"github.com/VinceDeslo/pr-check-test-app/internal/config"
+	"github.com/VinceDeslo/pr-check-test-app/internal/inlinecomments"
 	"github.com/VinceDeslo/pr-check-test-app/internal/prcomments"
 	"github.com/google/go-github/v60/github"
 )
@@ -16,6 +17,7 @@ type WebhookService struct {
 	GithubClient *github.Client
 	CheckService *checks.ChecksService
 	PRCommentsService *prcomments.PRCommentsService
+	InlineCommentsService *inlinecomments.InlineCommentsService
 }
 
 func NewWebhookService(
@@ -24,6 +26,7 @@ func NewWebhookService(
 	ghClient *github.Client,
 	checkService checks.ChecksService,
 	prCommentsService prcomments.PRCommentsService,
+	inlineCommentsService inlinecomments.InlineCommentsService,
 ) WebhookService {
 	return WebhookService {
 		Config: cfg,	
@@ -31,6 +34,7 @@ func NewWebhookService(
 		GithubClient: ghClient,
 		CheckService: &checkService,
 		PRCommentsService: &prCommentsService,
+		InlineCommentsService: &inlineCommentsService,
 	}
 }
 
@@ -65,6 +69,11 @@ func (ws *WebhookService) processPullRequestEvent(event *github.PullRequestEvent
 	switch *event.Action {
 	case "opened":
 		ws.Logger.Info("Processing pull_request opened")
+
+		// Store some basic info about the PR for comment tracking
+		ws.InlineCommentsService.Storage.InMemDB.PRNumber = *event.PullRequest.Number
+		ws.InlineCommentsService.Storage.InMemDB.HeadSHA = *event.PullRequest.Head.SHA
+		
 		ws.CheckService.CreatePRCheck(event)
 		ws.PRCommentsService.CreatePRComment(event)
 	case "synchronize":
@@ -94,6 +103,7 @@ func (ws *WebhookService) processCheckRunEvent(event *github.CheckRunEvent){
 		ws.Logger.Info("Processing check_run scan complete action")
 		ws.CheckService.UpdatePRCheck(event)
 		ws.PRCommentsService.UpdatePRComment(event)
+		ws.InlineCommentsService.CreateInlineComment(event)
 	default:
 		ws.Logger.Info("Unrecognized requested action")
 	}
